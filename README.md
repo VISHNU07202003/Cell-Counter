@@ -162,11 +162,14 @@ Image Upload → Filename Detection → Algorithm Routing
 
 ---
 
-## 🎓 Academic Context
+## 🫐 Built for BlueberryLab UF
 
-This project was developed as part of a Master's thesis at the **University of Florida** (BlueberryLab UF), combining:
-- **Computer Vision** — Automated image analysis for biological microscopy
-- **User Experience Design** (CEN 5728) — Full UCD process including heuristic evaluation, user research, personas, and interaction design
+This application was developed for the **BlueberryLab** at the **University of Florida** to be used by lab technicians and researchers in their daily fermentation monitoring workflows. It is production software designed to:
+- **Replace manual hemocytometer counting** across all lab operations
+- **Standardize cell counting data** to eliminate operator variability between technicians
+- **Accelerate fermentation decision-making** by delivering counts in minutes instead of hours
+
+The system incorporates **Computer Vision** for automated microscopy analysis and **User-Centered Design** principles to ensure the tool is accessible to every lab member from day one — no training required.
 
 ---
 
