@@ -5,6 +5,11 @@
  * and image viewer interactions.
  */
 
+// ── Authentication Check ───────────────────────────────────────
+if (sessionStorage.getItem("cellcounter_authenticated") !== "true") {
+  window.location.href = "/login";
+}
+
 // ── State ──────────────────────────────────────────────────────
 const state = {
   files: [],
