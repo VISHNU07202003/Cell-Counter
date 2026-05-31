@@ -31,9 +31,12 @@ Cell Counter 2.0 replaces the traditional 4-hour manual hemocytometer workflow w
 
 - **🖱️ Drag & Drop Folders** — Upload entire experiment folders. The app recursively finds all images inside.
 - **🔬 Dual-Mode Processing** — Automatically detects bright-field vs. fluorescence images from filenames and routes to the correct algorithm.
+- **⚙️ Engine Toggle** — Switch between fast classical CV (OpenCV) and state-of-the-art Deep Learning (Cellpose) models for challenging cell clusters.
 - **🧬 Smart Pairing** — Groups `2_01_brightfield.png` + `2_01_fluorescence.png` into a single sample with Total Cells, Live Cells, and Viability %.
 - **📊 Live Dashboard** — Real-time metric cards, sortable results table, and progress bar.
 - **🖼️ 6-View Image Viewer** — Toggle between Original, Annotated (cells circled), and Mask views for both BF and FL channels.
+- **✍️ Active Learning Canvas** — Click to add or remove cells directly on the image viewer. Corrections are saved to `data/training_data/` to train custom lab models.
+- **🧠 AI Batch Insights** — Generates natural-language reports summarizing batch health, highlighting anomalous samples, and recommending actions for low viability or zero counts.
 - **📥 One-Click Export** — Download CSV spreadsheet or ZIP of all annotated images.
 - **🔐 Lab Login Portal** — Animated login page with pre-configured lab credentials and "Remember Me" functionality.
 - **🧹 Batch Management** — Clear workspace between batches to keep data clean.
@@ -145,6 +148,9 @@ Image Upload → Filename Detection → Algorithm Routing
 | `DELETE` | `/api/results` | Clear session / new batch |
 | `GET` | `/api/download/csv` | Download results as CSV |
 | `GET` | `/api/download/zip` | Download annotated images as ZIP |
+| `POST` | `/api/engine` | Toggle between OpenCV and Cellpose engines |
+| `POST` | `/api/save_annotations` | Save Active Learning corrections to disk |
+| `POST` | `/api/insights` | Generate LLM-powered batch insights |
 
 ---
 
@@ -156,9 +162,9 @@ Image Upload → Filename Detection → Algorithm Routing
 - [x] Phase 3.5 — Fluorescence viability pipeline
 - [x] Phase 4 — Folder upload & batch processing
 - [x] Phase 5 — UX Design documentation & login page
-- [ ] Phase 6 — Deep Learning (Cellpose) integration
-- [ ] Phase 7 — Active Learning canvas (click-to-correct)
-- [ ] Phase 8 — LLM-powered batch insights
+- [x] Phase 6 — Deep Learning (Cellpose) integration
+- [x] Phase 7 — Active Learning canvas (click-to-correct)
+- [x] Phase 8 — LLM-powered batch insights
 
 ---
 

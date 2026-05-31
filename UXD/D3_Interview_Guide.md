@@ -131,7 +131,7 @@ We want to understand how lab technicians currently perform cell counting tasks,
 
 **Viability:** "For viability, I mix the sample with Trypan Blue, load a fresh chamber, and count blue cells separately from clear cells. It literally doubles my counting time. And sometimes it's hard to tell if a cell is light blue or actually clear — the color is very subjective."
 
-**Ideal Tool:** "I want to drag a folder of images in, press one button, and get a CSV with all my counts. I don't want to touch any settings. And I want to see the image with circles around the cells so I can check if it's right."
+**Ideal Tool:** "I want to drag a folder of images in, press one button, and get a CSV with all my counts. I don't want to touch any settings. And I want to see the image with circles around the cells so I can check if it's right. Oh, and if the computer misses a cell, I wish I could just click the image to add it myself instead of starting over."
 
 ---
 
@@ -147,7 +147,7 @@ We want to understand how lab technicians currently perform cell counting tasks,
 
 **Fluorescence:** "I use a green fluorescent stain for viability. The problem is ImageJ's threshold is even worse on fluorescence images — the background is completely black except for the glowing dots, so the threshold slider is super sensitive. One pixel of adjustment changes the count by 20-30 cells."
 
-**Ideal Tool:** "Honestly, I just want something that automatically knows the difference between a bright-field image and a fluorescence image and processes them correctly without me configuring anything. And batch processing — I should be able to drop 40 images and come back to a finished table."
+**Ideal Tool:** "Honestly, I just want something that automatically knows the difference between a bright-field image and a fluorescence image and processes them correctly without me configuring anything. And batch processing — I should be able to drop 40 images and come back to a finished table. If the basic algorithm fails on really crowded cell clusters, having a toggle to use a deep learning model like Cellpose would be amazing."
 
 ---
 
@@ -181,7 +181,7 @@ We want to understand how lab technicians currently perform cell counting tasks,
 
 **Fluorescence:** "Viability data is critical for my decisions, but it arrives even later than total counts because it's a separate protocol. I need total and viability in a single report, not two separate spreadsheets."
 
-**Ideal Tool:** "I want one system that all my technicians use, so I get consistent data regardless of who is operating it. The system should eliminate operator variability entirely. And I want a single CSV with sample ID, total count, live count, and viability — all in one file, not scattered across notebooks and spreadsheets. Oh, and if I could see the annotated images to spot-check, that would eliminate 90% of my data trust issues."
+**Ideal Tool:** "I want one system that all my technicians use, so I get consistent data regardless of who is operating it. The system should eliminate operator variability entirely. And I want a single CSV with sample ID, total count, live count, and viability — all in one file, not scattered across notebooks and spreadsheets. If the system could also automatically flag weird batches or zero-counts and summarize the viability health for me in a quick report, that would save me hours of analysis."
 
 ---
 

@@ -71,7 +71,7 @@ Before the Cell Counter application, lab technicians at BlueberryLab UF relied o
 
 **Impact:** A single mistake in ImageJ can cost 5-10 minutes of rework. Technicians report losing entire analysis sessions because of accidental window closures. This is especially frustrating during time-sensitive fermentation monitoring where dozens of samples must be processed quickly.
 
-**Recommendation:** Provide non-destructive processing with the ability to re-view, re-export, and clear results at any time. The Cell Counter app stores all results in-session, allows re-viewing any sample via the "View" button, and provides a deliberate "Clear / New Batch" button that only resets when the user explicitly chooses to.
+**Recommendation:** Provide non-destructive processing with the ability to re-view, re-export, and clear results at any time. The Cell Counter app stores all results in-session, allows re-viewing any sample via the "View" button, and provides a deliberate "Clear / New Batch" button that only resets when the user explicitly chooses to. Furthermore, the Active Learning Canvas gives users the ultimate freedom to override the automated system by manually adding or removing miscounted cells directly on the image, saving those corrections to improve future models.
 
 ---
 
@@ -143,7 +143,7 @@ Before the Cell Counter application, lab technicians at BlueberryLab UF relied o
 
 **Impact:** Technicians often do not realize a count is wrong until it is compared with other samples days later during data analysis. By then, the original sample may have been discarded, making recounting impossible.
 
-**Recommendation:** Provide visual verification alongside every count — annotated images with circles drawn around every detected cell, plus debug mask views showing exactly what the algorithm "sees." The Cell Counter app provides three views per image (Original, Annotated, Mask) so technicians can instantly verify accuracy.
+**Recommendation:** Provide visual verification alongside every count — annotated images with circles drawn around every detected cell, plus debug mask views showing exactly what the algorithm "sees." The Cell Counter app provides three views per image (Original, Annotated, Mask) so technicians can instantly verify accuracy. Additionally, the AI Batch Insights feature automatically diagnoses the batch, highlighting samples with anomalous zero-counts or critical viability drops, and recommends specific recovery actions (e.g., 'Check temperature', 'Re-photograph sample'). If the algorithm makes an error, the Active Learning Canvas allows the technician to instantly recover by clicking to correct the count.
 
 ---
 

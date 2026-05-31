@@ -162,7 +162,7 @@ After conducting all 4 interviews, responses were transcribed and organized into
 5. Unified viability calculation
 6. Clean CSV export
 
-**Narrative:** Maria arrives at 9 AM with 21 fermentation samples already photographed on the microscope. Each sample has two images: one bright-field and one fluorescence. She opens the Cell Counter in her browser, drags the entire `New_Raw` folder onto the upload zone, and clicks "Count Cells." The progress bar fills over 2 minutes. When complete, she sees a results table showing each sample's Total Cells, Live Cells, and Viability %. She clicks "View" on sample 2_04, which shows 63.2% viability — lower than expected. She toggles to the annotated image to verify the count looks correct. Satisfied, she clicks "Download CSV" and attaches the file to her daily report email to Dr. Chen. The entire process took 4 minutes.
+**Narrative:** Maria arrives at 9 AM with 21 fermentation samples already photographed on the microscope. Each sample has two images: one bright-field and one fluorescence. She opens the Cell Counter in her browser, drags the entire `New_Raw` folder onto the upload zone, and clicks "Count Cells." The progress bar fills over 2 minutes. When complete, she sees a results table showing each sample's Total Cells, Live Cells, and Viability %. She clicks "View" on sample 2_04, which shows 63.2% viability. She toggles to the annotated image and notices the algorithm missed two faint cells. Using the Active Learning Canvas, she clicks "➕ Add Cell" and clicks on the two missed cells, then hits "💾 Save Corrections" to improve future models. Satisfied, she clicks "🧠 AI Insights" to generate a quick summary report, downloads the CSV, and attaches both to her daily report email to Dr. Chen. The entire process took 4 minutes.
 
 ---
 
@@ -174,7 +174,7 @@ After conducting all 4 interviews, responses were transcribed and organized into
 2. Consistent, operator-independent results
 3. Annotated image review
 
-**Narrative:** Dr. Chen receives Maria's daily CSV at 9:15 AM. He notices sample 2_03 shows 100% viability (11 total, 11 live) while surrounding samples are at 30-65%. This is unusual. He opens the Cell Counter in his browser, navigates to the results from the current batch, and clicks "View" on sample 2_03. He toggles between the original bright-field image and the annotated overlay. He sees that the bright-field image had very poor contrast, causing the algorithm to detect fewer total cells — but the fluorescence image clearly showed 11 glowing live cells. The system automatically corrected the total count to match (since you cannot have more live cells than total cells). Dr. Chen understands the biological logic, notes the poor image quality in his records, and asks Maria to re-photograph that sample.
+**Narrative:** Dr. Chen receives Maria's daily CSV at 9:15 AM. He opens the Cell Counter and clicks "🧠 AI Insights". The panel immediately flags sample 2_03 for having 100% viability (11 total, 11 live) while surrounding samples are at 30-65%. It also flags a zero-count warning on sample 2_08. He clicks "View" on sample 2_03. He toggles between the original bright-field image and the annotated overlay. He sees that the bright-field image had very poor contrast, causing the OpenCV algorithm to detect fewer total cells. Since he knows this is a recurring issue with these specific samples, he toggles the Engine from "⚙️ OpenCV" to "🧠 Cellpose" and reruns the batch. The deep learning model correctly segments the low-contrast clusters, fixing the anomaly. Dr. Chen is confident in the new numbers.
 
 ---
 
@@ -204,16 +204,23 @@ Maria clicks "Download CSV" and the clean spreadsheet appears in her downloads f
 
 ```mermaid
 flowchart TD
-    A["Open Cell Counter\n(localhost:5000)"] --> B["Drag folder onto\nupload zone"]
+    A["Open Cell Counter\n(localhost:5000)"] --> Z{"Toggle Engine?"}
+    Z -->|OpenCV| B["Drag folder onto\nupload zone"]
+    Z -->|Cellpose| B
     B --> C["Preview image\nthumbnails"]
     C --> D["Click 'Count Cells'"]
     D --> E["Watch progress bar"]
     E --> F["View results table"]
-    F --> G{"Verify counts?"}
+    F --> AI["Click 'AI Insights'\nfor summary"]
+    AI --> G{"Verify counts?"}
     G -->|Yes| H["Click 'View' on sample"]
     H --> I["Toggle BF/FL views"]
     I --> J["Check annotated overlay"]
-    J --> F
+    J --> CORR{"Corrections needed?"}
+    CORR -->|Yes| AL["Active Learning Canvas:\nAdd/Remove cells"]
+    AL --> SAVE["Save Corrections"]
+    SAVE --> F
+    CORR -->|No| F
     G -->|No| K{"Export data?"}
     K -->|CSV| L["Click 'Download CSV'"]
     K -->|Images| M["Click 'Download All Images'"]
@@ -233,7 +240,8 @@ flowchart TD
     START(("User opens\nbrowser")) --> LOGIN["Navigate to\nlocalhost:5000"]
     LOGIN --> LANDING["Landing page:\nUpload zone visible"]
     
-    LANDING --> UPLOAD{"Upload method"}
+    LANDING --> ENGINE["Select Engine\n(OpenCV / Cellpose)"]
+    ENGINE --> UPLOAD{"Upload method"}
     UPLOAD -->|"Drag folder"| DROP["Drop folder\non upload zone"]
     UPLOAD -->|"Click to browse"| BROWSE["File picker dialog"]
     DROP --> PREVIEW["File strip shows\nthumbnails"]
@@ -247,11 +255,19 @@ flowchart TD
     COUNT --> PROGRESS["Progress bar animates\n(Processing X/Y...)"]
     PROGRESS --> RESULTS["Results dashboard:\nMetric cards + Table"]
     
-    RESULTS --> VIEW_BTN{"Click 'View'?"}
+    RESULTS --> INSIGHTS{"View Insights?"}
+    INSIGHTS -->|Yes| SHOW_AI["AI Panel generates\nbatch summary"]
+    SHOW_AI --> VIEW_BTN
+    INSIGHTS -->|No| VIEW_BTN{"Click 'View'?"}
+    
     VIEW_BTN -->|Yes| VIEWER["Image viewer opens"]
     VIEWER --> TOGGLE["Toggle: BF Original → BF Annotated → BF Mask\n→ FL Original → FL Annotated → FL Mask"]
     TOGGLE --> STATS["View stats:\nTotal | Live | Viability %"]
-    STATS --> CLOSE["Click ✕ to close viewer"]
+    STATS --> AL_CANVAS{"Make Corrections?"}
+    AL_CANVAS -->|Yes| ADD_REM["Click to add/remove\ncells on image"]
+    ADD_REM --> SAVE_CORR["Save to training data"]
+    SAVE_CORR --> CLOSE["Click ✕ to close viewer"]
+    AL_CANVAS -->|No| CLOSE
     CLOSE --> RESULTS
     
     VIEW_BTN -->|No| EXPORT{"Export action"}
