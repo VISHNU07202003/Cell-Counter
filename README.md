@@ -78,7 +78,7 @@ pip install -r requirements.txt
 python server.py
 ```
 
-Open your browser to **http://localhost:5000**
+Open your browser to **https://cell-counter.onrender.com/login**
 
 - **Login page:** http://localhost:5000/login
 - **Quick credentials:** `lab` / `lab`
