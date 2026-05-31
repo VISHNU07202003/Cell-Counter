@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Cell Counter - Lab Login Portal">
+  <title>Cell Counter — Login</title>
+
+  <!-- Google Fonts: Inter + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+
+  <!-- Animated floating cell background -->
+  <div class="bg-cells" id="bgCells"></div>
+
+  <!-- Login Container -->
+  <div class="login-wrapper">
+    <div class="login-card">
+
+      <!-- Brand Header -->
+      <div class="login-brand">
+        <div class="brand-logo">
+          <span class="logo-microscope">🔬</span>
+          <div class="logo-ring"></div>
+        </div>
+        <h1 class="login-title">Cell Counter</h1>
+        <p class="login-subtitle">BlueberryLab <strong>UF</strong> · Fermentation Lab</p>
+      </div>
+
+      <!-- Login Form -->
+      <form class="login-form" id="loginForm" autocomplete="off">
+        <div class="form-group">
+          <label class="form-label" for="username">Lab Username</label>
+          <div class="input-wrapper">
+            <span class="input-icon">👤</span>
+            <input
+              type="text"
+              id="username"
+              class="form-input"
+              placeholder="e.g. maria.santos"
+              required
+              autofocus
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <div class="input-wrapper">
+            <span class="input-icon">🔒</span>
+            <input
+              type="password"
+              id="password"
+              class="form-input"
+              placeholder="Enter your password"
+              required
+            >
+            <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">
+              👁️
+            </button>
+          </div>
+        </div>
+
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="rememberMe" class="checkbox-input">
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-text">Remember me</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn-login" id="loginBtn">
+          <span class="btn-text">Sign In</span>
+          <span class="btn-spinner" id="loginSpinner"></span>
+        </button>
+
+        <div class="login-error" id="loginError">
+          <span class="error-icon">⚠️</span>
+          <span class="error-text" id="errorText">Invalid username or password</span>
+        </div>
+      </form>
+
+      <!-- Footer -->
+      <div class="login-footer">
+        <p class="footer-text">🫐 BlueberryLab UF · University of Florida</p>
+        <p class="footer-version">Cell Counter v2.0 · Spring 2026</p>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="login.js"></script>
+</body>
+</html>

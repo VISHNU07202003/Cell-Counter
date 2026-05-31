@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+venv/
+.venv/
+env/
+
+# Uploads & outputs (generated at runtime)
+uploads/
+outputs/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data folders (too large for GitHub)
+data/raw/
+data/annotated/
+data/New_Raw/
+
+# Nested duplicate (if it still exists)
+cell counter 2.0/

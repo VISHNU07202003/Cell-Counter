@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Automated biological cell counting software">
+  <title>Cell Counter</title>
+
+  <!-- Google Fonts: Inter + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============================================================
+       1. HEADER — Fixed top bar
+       ============================================================ -->
+  <header class="header">
+    <div class="header-logo">
+      <span class="logo-icon">🔬</span>
+      <h1 class="header-title">Cell Counter</h1>
+    </div>
+    
+    <div class="header-info">
+      <div class="header-brand">
+        <span class="brand-icon">🫐</span>
+        <span class="brand-text">BlueberryLab <strong>UF</strong></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       2. MAIN CONTENT
+       ============================================================ -->
+  <main class="main">
+    <div class="container">
+
+      <!-- --------------------------------------------------------
+           Section A: Upload Zone
+           -------------------------------------------------------- -->
+      <section class="upload-section" id="uploadSection">
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-icon">📁</div>
+          <p class="upload-text-primary">Drag & drop your microscope images or folders here</p>
+          <p class="upload-text-secondary">or click to browse</p>
+          <p class="upload-formats">
+            <span class="format-chip">PNG</span>
+            <span class="format-chip">JPG</span>
+            <span class="format-chip">TIFF</span>
+          </p>
+          <input type="file" id="fileInput" multiple accept="image/*" hidden>
+        </div>
+        <div class="file-strip" id="fileStrip"></div>
+        <div class="upload-actions">
+          <button class="btn-primary" id="countBtn" disabled>🚀 Count Cells</button>
+        </div>
+      </section>
+
+      <!-- --------------------------------------------------------
+           Section B: Progress (hidden by default)
+           -------------------------------------------------------- -->
+      <section class="progress-section section-hidden" id="progressSection">
+        <p class="progress-text" id="progressText">Processing 0/0...</p>
+        <div class="progress-container">
+          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+      </section>
+
+      <!-- --------------------------------------------------------
+           Section C: Results Dashboard (hidden by default)
+           -------------------------------------------------------- -->
+      <section class="results-section section-hidden" id="resultsSection">
+        <h2 class="section-title">Results</h2>
+
+        <!-- Results Dashboard -->
+        <div class="metrics-row">
+          <div class="metric-card">
+            <div class="metric-icon">🦠</div>
+            <div class="metric-value" id="totalCount">0</div>
+            <div class="metric-label">Total Cells</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">✨</div>
+            <div class="metric-value" id="liveCount">0</div>
+            <div class="metric-label">Live Cells</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">💯</div>
+            <div class="metric-value" id="avgViability">0%</div>
+            <div class="metric-label">Avg Viability</div>
+          </div>
+        </div>
+
+        <div class="results-table-wrapper">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Thumbnails</th>
+                <th>Sample ID</th>
+                <th>Total Cells</th>
+                <th>Live Cells</th>
+                <th>Viability</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Download Actions -->
+        <div class="download-row">
+          <button class="btn-download" id="downloadCsvBtn">📥 Download CSV</button>
+          <button class="btn-download" id="downloadZipBtn">📥 Download All Images</button>
+          <button class="btn-clear" id="clearBtn">🗑️ Clear / New Batch</button>
+        </div>
+      </section>
+
+      <!-- --------------------------------------------------------
+           Section D: Image Viewer (hidden by default)
+           -------------------------------------------------------- -->
+      <section class="viewer-section section-hidden" id="viewerSection">
+        <div class="image-viewer">
+          <div class="viewer-header">
+            <h3 class="viewer-title" id="viewerTitle">Image Details</h3>
+            <button class="btn-close" id="viewerClose">✕</button>
+          </div>
+          <!-- We will inject toggle buttons for BF and FL dynamically in JS -->
+          <div class="viewer-toggle" id="viewerToggle">
+          </div>
+
+          <div class="viewer-stats" id="viewerStats">
+            <!-- Dynamic stats injected by JS -->
+          </div>
+          <div class="viewer-grid" id="viewerGrid">
+            <div class="viewer-panel">
+              <h4>Original</h4>
+              <img class="viewer-img" id="viewerOriginal" alt="Original image">
+            </div>
+            <div class="viewer-panel">
+              <h4 id="viewerRightLabel">Annotated</h4>
+              <img class="viewer-img" id="viewerProcessed" alt="Processed image">
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /.container -->
+  </main>
+
+  <!-- ============================================================
+       3. TOAST CONTAINER
+       ============================================================ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ============================================================
+       4. APP SCRIPT
+       ============================================================ -->
+  <script src="app.js"></script>
+
+</body>
+</html>
