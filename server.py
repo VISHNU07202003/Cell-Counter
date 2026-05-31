@@ -4,11 +4,14 @@ Cell Counter — Web Server (Flask API)
 Wraps the existing predict.py pipeline as a REST API.
 
 Endpoints:
-  POST /api/upload      Upload images and get cell counts
-  GET  /api/results     Get all processed results
-  GET  /api/images/<path> Serve annotated/debug images
-  GET  /api/download/csv  Download the counts CSV
-  GET  /api/download/zip  Download all annotated images as ZIP
+  POST /api/upload              Upload images and get cell counts
+  GET  /api/results             Get all processed results
+  GET  /api/images/<path>       Serve annotated/debug images
+  GET  /api/download/csv        Download the counts CSV
+  GET  /api/download/zip        Download all annotated images as ZIP
+  POST /api/engine              Toggle between OpenCV and Cellpose engines
+  POST /api/save_annotations    Save user corrections for active learning
+  POST /api/insights            Generate LLM-powered batch insights
 """
 
 import io
@@ -26,7 +29,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import config as cfg
-from scripts.predict import predict, log_to_csv
+from scripts.predict import predict, log_to_csv, set_engine, get_engine
 
 # ── Flask App Setup ──────────────────────────────────────────────
 app = Flask(__name__, static_folder="static", static_url_path="")
@@ -235,6 +238,196 @@ def download_zip():
         as_attachment=True,
         download_name=f"cell_counter_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
     )
+
+
+# ── Phase 6: Engine Toggle ───────────────────────────────────────
+
+@app.route("/api/engine", methods=["GET", "POST"])
+def engine_toggle():
+    """Get or set the prediction engine (opencv or cellpose)."""
+    if request.method == "POST":
+        data = request.get_json(force=True)
+        engine = data.get("engine", "opencv")
+        current = set_engine(engine)
+        return jsonify({"engine": current, "message": f"Engine switched to {current}"})
+    else:
+        return jsonify({"engine": get_engine()})
+
+
+# ── Phase 7: Active Learning — Save Annotations ─────────────────
+
+TRAINING_DATA_DIR = PROJECT_ROOT / "data" / "training_data"
+TRAINING_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+@app.route("/api/save_annotations", methods=["POST"])
+def save_annotations():
+    """
+    Save user-corrected cell coordinates for active learning.
+    Expects JSON: { sample_id, image_type, centroids: [{x, y}, ...], action_log: [...] }
+    """
+    data = request.get_json(force=True)
+    sample_id = data.get("sample_id", "unknown")
+    image_type = data.get("image_type", "brightfield")
+    centroids = data.get("centroids", [])
+    action_log = data.get("action_log", [])
+
+    # Create a timestamped entry
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    entry = {
+        "sample_id": sample_id,
+        "image_type": image_type,
+        "timestamp": ts,
+        "corrected_count": len(centroids),
+        "centroids": centroids,
+        "action_log": action_log,
+    }
+
+    # Save JSON
+    json_path = TRAINING_DATA_DIR / f"{sample_id}_{image_type}_{ts}.json"
+    with open(json_path, "w") as f:
+        json.dump(entry, f, indent=2)
+
+    # Copy the original image alongside the annotation if it exists in uploads
+    for ext in [".png", ".jpg", ".jpeg", ".tif", ".tiff"]:
+        candidates = list(UPLOAD_DIR.glob(f"*{sample_id}*{image_type}*{ext}"))
+        if not candidates:
+            candidates = list(UPLOAD_DIR.glob(f"*{sample_id}*{ext}"))
+        if candidates:
+            import shutil
+            dest = TRAINING_DATA_DIR / f"{sample_id}_{image_type}_{ts}{ext}"
+            shutil.copy2(str(candidates[0]), str(dest))
+            break
+
+    return jsonify({
+        "status": "saved",
+        "path": str(json_path),
+        "corrected_count": len(centroids)
+    })
+
+
+# ── Phase 8: LLM-Powered Batch Insights ──────────────────────────
+
+@app.route("/api/insights", methods=["POST"])
+def generate_insights():
+    """
+    Generate natural-language batch insights from the current results.
+    Uses rule-based analysis (no external API key required).
+    """
+    if not session_results:
+        return jsonify({"error": "No results to analyze"}), 404
+
+    # Gather stats
+    total_samples = len(session_results)
+    viabilities = []
+    total_counts = []
+    live_counts = []
+    low_viability = []
+    high_viability = []
+    zero_counts = []
+    max_count_sample = None
+    max_count = 0
+
+    for r in session_results:
+        if r.get("status") == "error":
+            continue
+        tc = r.get("total_count")
+        lc = r.get("live_count")
+        v = r.get("viability")
+
+        if tc is not None:
+            total_counts.append(tc)
+            if tc > max_count:
+                max_count = tc
+                max_count_sample = r.get("sample_id")
+            if tc == 0:
+                zero_counts.append(r.get("sample_id"))
+
+        if lc is not None:
+            live_counts.append(lc)
+
+        if v is not None:
+            viabilities.append(v)
+            if v < 50:
+                low_viability.append({"id": r.get("sample_id"), "viability": v})
+            elif v >= 90:
+                high_viability.append({"id": r.get("sample_id"), "viability": v})
+
+    # Build insights
+    insights = []
+    insights.append(f"## 📊 Batch Summary")
+    insights.append(f"Processed **{total_samples}** samples in this batch.")
+    insights.append("")
+
+    if total_counts:
+        avg_total = sum(total_counts) / len(total_counts)
+        insights.append(f"### Cell Counts")
+        insights.append(f"- **Average total cells:** {avg_total:.1f} per sample")
+        insights.append(f"- **Range:** {min(total_counts)} — {max(total_counts)} cells")
+        if max_count_sample:
+            insights.append(f"- **Highest count:** {max_count} cells in sample **{max_count_sample}**")
+        insights.append("")
+
+    if viabilities:
+        avg_v = sum(viabilities) / len(viabilities)
+        insights.append(f"### Viability")
+        insights.append(f"- **Average viability:** {avg_v:.1f}%")
+        if avg_v >= 80:
+            insights.append(f"- ✅ Overall viability is **healthy** (≥80%).")
+        elif avg_v >= 60:
+            insights.append(f"- ⚠️ Overall viability is **moderate** (60-80%). Monitor closely.")
+        else:
+            insights.append(f"- 🚨 Overall viability is **low** (<60%). Investigate immediately.")
+        insights.append("")
+
+    if low_viability:
+        insights.append(f"### ⚠️ Low Viability Alerts")
+        insights.append(f"The following {len(low_viability)} sample(s) showed viability below 50%:")
+        for s in low_viability:
+            insights.append(f"- **{s['id']}**: {s['viability']}%")
+        insights.append("")
+        insights.append("**Recommendation:** Check temperature, pH, and nutrient levels in the corresponding fermentation vessels. Low viability may indicate contamination, nutrient depletion, or thermal stress.")
+        insights.append("")
+
+    if high_viability:
+        insights.append(f"### ✅ Healthy Samples")
+        insights.append(f"{len(high_viability)} sample(s) showed excellent viability (≥90%):")
+        for s in high_viability:
+            insights.append(f"- **{s['id']}**: {s['viability']}%")
+        insights.append("")
+
+    if zero_counts:
+        insights.append(f"### 🔍 Zero-Count Warnings")
+        insights.append(f"The following sample(s) returned zero cells detected:")
+        for sid in zero_counts:
+            insights.append(f"- **{sid}**")
+        insights.append("")
+        insights.append("**Recommendation:** Re-examine image quality. Poor focus, incorrect exposure, or empty chambers can cause zero detections. Consider re-photographing these samples.")
+        insights.append("")
+
+    if live_counts and total_counts:
+        total_all = sum(total_counts)
+        live_all = sum(live_counts)
+        if total_all > 0:
+            batch_viability = (live_all / total_all) * 100
+            insights.append(f"### 🧬 Batch-Level Metrics")
+            insights.append(f"- **Total cells across all samples:** {total_all:,}")
+            insights.append(f"- **Total live cells:** {live_all:,}")
+            insights.append(f"- **Batch-wide viability:** {batch_viability:.1f}%")
+            insights.append("")
+
+    insights.append(f"---")
+    insights.append(f"*Analysis generated by Cell Counter v2.0 · Engine: {get_engine().upper()} · {datetime.now().strftime('%Y-%m-%d %H:%M')}*")
+
+    return jsonify({
+        "insights": "\n".join(insights),
+        "stats": {
+            "total_samples": total_samples,
+            "avg_viability": round(sum(viabilities) / len(viabilities), 1) if viabilities else None,
+            "avg_total_count": round(sum(total_counts) / len(total_counts), 1) if total_counts else None,
+            "low_viability_count": len(low_viability),
+            "engine": get_engine(),
+        }
+    })
 
 
 # ── Entry Point ──────────────────────────────────────────────────

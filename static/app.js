@@ -389,6 +389,17 @@ function openViewer(index) {
 
   viewerTitle.textContent = "Sample: " + r.sample_id;
 
+  // Phase 7: Reset canvas state for active learning
+  currentViewerSampleId = r.sample_id;
+  currentViewerImageType = r.brightfield ? "brightfield" : "fluorescence";
+  canvasCentroids = [];
+  actionLog = [];
+  annotationMode = null;
+  if (toolAdd) toolAdd.classList.remove("active");
+  if (toolRemove) toolRemove.classList.remove("active");
+  if (annotationCanvas) annotationCanvas.classList.remove("mode-add", "mode-remove");
+  if (correctionCount) correctionCount.textContent = "";
+
   // Build stats
   viewerStats.innerHTML = `
     <div class="stat-item">
@@ -547,4 +558,225 @@ document.addEventListener("keydown", (e) => {
     viewerSection.classList.add("section-hidden");
     viewerSection.classList.remove("section-visible");
   }
+});
+
+
+// ============================================================
+// Phase 6: Engine Toggle
+// ============================================================
+
+const btnOpenCV = $("#btnOpenCV");
+const btnCellpose = $("#btnCellpose");
+
+[btnOpenCV, btnCellpose].forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const engine = btn.dataset.engine;
+    try {
+      const res = await fetch("/api/engine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ engine }),
+      });
+      const data = await res.json();
+      // Update UI
+      btnOpenCV.classList.toggle("active", data.engine === "opencv");
+      btnCellpose.classList.toggle("active", data.engine === "cellpose");
+      showToast(`Engine switched to ${data.engine.toUpperCase()}`, "success");
+    } catch (err) {
+      showToast("Failed to switch engine.", "error");
+    }
+  });
+});
+
+
+// ============================================================
+// Phase 7: Active Learning Canvas
+// ============================================================
+
+const annotationCanvas = $("#annotationCanvas");
+const canvasWrapper = $("#canvasWrapper");
+const toolAdd = $("#toolAdd");
+const toolRemove = $("#toolRemove");
+const toolSave = $("#toolSave");
+const correctionCount = $("#correctionCount");
+
+let annotationMode = null; // null, "add", "remove"
+let canvasCentroids = [];  // [{x, y}, ...]
+let actionLog = [];        // ["added(x,y)", "removed(x,y)", ...]
+let currentViewerSampleId = null;
+let currentViewerImageType = null;
+
+// Tool button clicks
+toolAdd.addEventListener("click", () => {
+  if (annotationMode === "add") {
+    annotationMode = null;
+    toolAdd.classList.remove("active");
+    annotationCanvas.classList.remove("mode-add");
+  } else {
+    annotationMode = "add";
+    toolAdd.classList.add("active");
+    toolRemove.classList.remove("active");
+    annotationCanvas.classList.add("mode-add");
+    annotationCanvas.classList.remove("mode-remove");
+  }
+});
+
+toolRemove.addEventListener("click", () => {
+  if (annotationMode === "remove") {
+    annotationMode = null;
+    toolRemove.classList.remove("active");
+    annotationCanvas.classList.remove("mode-remove");
+  } else {
+    annotationMode = "remove";
+    toolRemove.classList.add("active");
+    toolAdd.classList.remove("active");
+    annotationCanvas.classList.add("mode-remove");
+    annotationCanvas.classList.remove("mode-add");
+  }
+});
+
+// Canvas click handler
+annotationCanvas.addEventListener("click", (e) => {
+  if (!annotationMode) return;
+
+  const rect = annotationCanvas.getBoundingClientRect();
+  const scaleX = annotationCanvas.width / rect.width;
+  const scaleY = annotationCanvas.height / rect.height;
+  const x = Math.round((e.clientX - rect.left) * scaleX);
+  const y = Math.round((e.clientY - rect.top) * scaleY);
+
+  if (annotationMode === "add") {
+    canvasCentroids.push({ x, y });
+    actionLog.push(`added(${x},${y})`);
+  } else if (annotationMode === "remove") {
+    // Find nearest centroid within 20px and remove it
+    let minDist = Infinity;
+    let minIdx = -1;
+    canvasCentroids.forEach((c, i) => {
+      const dist = Math.sqrt((c.x - x) ** 2 + (c.y - y) ** 2);
+      if (dist < minDist) {
+        minDist = dist;
+        minIdx = i;
+      }
+    });
+    if (minIdx >= 0 && minDist < 25) {
+      const removed = canvasCentroids.splice(minIdx, 1)[0];
+      actionLog.push(`removed(${removed.x},${removed.y})`);
+    }
+  }
+
+  drawCanvasCentroids();
+  correctionCount.textContent = `${canvasCentroids.length} cells marked · ${actionLog.length} edits`;
+});
+
+function drawCanvasCentroids() {
+  const ctx = annotationCanvas.getContext("2d");
+  ctx.clearRect(0, 0, annotationCanvas.width, annotationCanvas.height);
+
+  canvasCentroids.forEach((c) => {
+    // Outer glow
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 10, 0, 2 * Math.PI);
+    ctx.fillStyle = "rgba(16, 185, 129, 0.2)";
+    ctx.fill();
+
+    // Inner circle
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = "rgba(16, 185, 129, 0.8)";
+    ctx.fill();
+
+    // Center dot
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 2, 0, 2 * Math.PI);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fill();
+  });
+}
+
+// Resize canvas when image loads
+const viewerOriginalImg = $("#viewerOriginal");
+viewerOriginalImg.addEventListener("load", () => {
+  annotationCanvas.width = viewerOriginalImg.naturalWidth;
+  annotationCanvas.height = viewerOriginalImg.naturalHeight;
+  drawCanvasCentroids();
+});
+
+// Save corrections
+toolSave.addEventListener("click", async () => {
+  if (canvasCentroids.length === 0) {
+    showToast("No corrections to save.", "error");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/save_annotations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sample_id: currentViewerSampleId || "unknown",
+        image_type: currentViewerImageType || "brightfield",
+        centroids: canvasCentroids,
+        action_log: actionLog,
+      }),
+    });
+    const data = await res.json();
+    showToast(`Saved ${data.corrected_count} corrections to training data!`, "success");
+    actionLog = [];
+  } catch (err) {
+    showToast("Failed to save corrections.", "error");
+  }
+});
+
+
+// ============================================================
+// Phase 8: AI Insights
+// ============================================================
+
+const insightsSection = $("#insightsSection");
+const insightsBody = $("#insightsBody");
+const insightsBtn = $("#insightsBtn");
+const insightsClose = $("#insightsClose");
+
+insightsBtn.addEventListener("click", async () => {
+  if (state.results.length === 0) {
+    showToast("No results to analyze.", "error");
+    return;
+  }
+
+  // Show panel with loading state
+  insightsBody.innerHTML = `<p class="insights-loading">🧠 Analyzing ${state.results.length} samples...</p>`;
+  insightsSection.classList.remove("section-hidden");
+  insightsSection.classList.add("section-visible");
+  insightsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  try {
+    const res = await fetch("/api/insights", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+
+    // Convert markdown-like text to HTML
+    let html = data.insights
+      .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+      .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+      .replace(/^- \*\*(.+?)\*\*: (.+)$/gm, "<li><strong>$1</strong>: $2</li>")
+      .replace(/^- \*\*(.+?)\*\* (.+)$/gm, "<li><strong>$1</strong> $2</li>")
+      .replace(/^- (.+)$/gm, "<li>$1</li>")
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/^---$/gm, "<hr>")
+      .replace(/\n\n/g, "<br><br>")
+      .replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`);
+
+    insightsBody.innerHTML = html;
+  } catch (err) {
+    insightsBody.innerHTML = `<p style="color: red;">Failed to generate insights. Please try again.</p>`;
+  }
+});
+
+insightsClose.addEventListener("click", () => {
+  insightsSection.classList.add("section-hidden");
+  insightsSection.classList.remove("section-visible");
 });

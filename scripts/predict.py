@@ -334,12 +334,151 @@ def predict_brightfield(image_path, save_annotated=True):
     return result
 
 def predict(image_path, save_annotated=True):
-    """Router: routes to brightfield or fluorescence based on filename."""
+    """Router: routes to brightfield or fluorescence, using selected engine."""
     image_path = Path(image_path)
-    if "fluores" in image_path.name.lower():
-        return predict_fluorescence(image_path, save_annotated)
+    is_fluorescence = "fluores" in image_path.name.lower()
+    
+    if CURRENT_ENGINE == "cellpose":
+        return predict_cellpose(image_path, save_annotated, is_fluorescence)
     else:
-        return predict_brightfield(image_path, save_annotated)
+        if is_fluorescence:
+            return predict_fluorescence(image_path, save_annotated)
+        else:
+            return predict_brightfield(image_path, save_annotated)
+
+
+# ── Engine Toggle ─────────────────────────────────────────────────────
+CURRENT_ENGINE = "opencv"  # "opencv" or "cellpose"
+
+def set_engine(engine_name):
+    """Switch between 'opencv' and 'cellpose' engines."""
+    global CURRENT_ENGINE
+    if engine_name in ("opencv", "cellpose"):
+        CURRENT_ENGINE = engine_name
+    return CURRENT_ENGINE
+
+def get_engine():
+    return CURRENT_ENGINE
+
+
+# ── Phase 6: Cellpose Deep Learning Pipeline ─────────────────────────
+_cellpose_model_cache = {}
+
+def _get_cellpose_model(model_type="cyto3"):
+    """Lazy-load and cache cellpose models to avoid repeated initialization."""
+    if model_type not in _cellpose_model_cache:
+        from cellpose import models
+        use_gpu = False
+        try:
+            import torch
+            use_gpu = torch.cuda.is_available()
+        except Exception:
+            pass
+        _cellpose_model_cache[model_type] = models.Cellpose(
+            model_type=model_type, gpu=use_gpu
+        )
+    return _cellpose_model_cache[model_type]
+
+
+def predict_cellpose(image_path, save_annotated=True, is_fluorescence=False):
+    """
+    Deep learning prediction using Cellpose.
+    Returns the same result dict format as the OpenCV pipeline for compatibility.
+    """
+    image_path = Path(image_path)
+    img_bgr = cv2.imread(str(image_path))
+    if img_bgr is None:
+        raise FileNotFoundError(f"Cannot read image: {image_path}")
+
+    # Choose model and channels based on image type
+    if is_fluorescence:
+        # For fluorescence: use green channel
+        model = _get_cellpose_model("cyto3")
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        channels = [2, 0]  # green channel, no nuclear channel
+        diameter = 30
+        image_type = "fluorescence"
+    else:
+        # For brightfield: use grayscale
+        model = _get_cellpose_model("cyto3")
+        gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+        img_rgb = np.stack([gray, gray, gray], axis=-1)
+        channels = [0, 0]  # grayscale
+        diameter = 35
+        image_type = "brightfield"
+
+    # Run Cellpose
+    masks, flows, styles, diams = model.eval(
+        img_rgb,
+        diameter=diameter,
+        channels=channels,
+        flow_threshold=0.4,
+        cellprob_threshold=0.0,
+    )
+
+    # Extract cell count and centroids from masks
+    num_cells = masks.max()  # Each unique integer is one cell
+    centroids = []
+    details = []
+
+    for cell_id in range(1, num_cells + 1):
+        cell_mask = (masks == cell_id).astype(np.uint8)
+        area = cell_mask.sum()
+        
+        # Find centroid
+        coords = np.argwhere(cell_mask > 0)
+        if len(coords) > 0:
+            cy, cx = coords.mean(axis=0)
+            centroids.append({"x": int(cx), "y": int(cy)})
+        
+        details.append({
+            "area": float(area),
+            "circularity": 1.0,
+            "status": "single_cell",
+            "cells": 1,
+        })
+
+    # Build mask image for debug view
+    mask_binary = (masks > 0).astype(np.uint8) * 255
+
+    result = {
+        "filename": image_path.name,
+        "timestamp": datetime.now().isoformat(),
+        "estimated_count": int(num_cells),
+        "singles": int(num_cells),
+        "clusters": 0,
+        "rejected": 0,
+        "original_size": f"{img_bgr.shape[1]}x{img_bgr.shape[0]}",
+        "details": details,
+        "centroids": centroids,
+        "image_type": image_type,
+        "engine": "cellpose",
+    }
+
+    if save_annotated:
+        # Draw contour annotations from cellpose masks
+        annotated = img_bgr.copy()
+        for cell_id in range(1, num_cells + 1):
+            cell_mask = (masks == cell_id).astype(np.uint8)
+            contours_cell, _ = cv2.findContours(cell_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.drawContours(annotated, contours_cell, -1, (0, 255, 0), 2)
+            
+            # Draw centroid
+            coords = np.argwhere(cell_mask > 0)
+            if len(coords) > 0:
+                cy, cx = int(coords[:, 0].mean()), int(coords[:, 1].mean())
+                cv2.circle(annotated, (cx, cy), 3, (0, 0, 255), -1)
+
+        # Save outputs
+        cfg.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        out_path = cfg.OUTPUT_DIR / f"annotated_{image_path.stem}.png"
+        debug_path = cfg.OUTPUT_DIR / f"debug_{image_path.stem}.png"
+        cv2.imwrite(str(out_path), annotated)
+        cv2.imwrite(str(debug_path), mask_binary)
+        result["annotated_path"] = str(out_path)
+        result["debug_path"] = str(debug_path)
+
+    return result
 
 # ── CSV logging ───────────────────────────────────────────────────────
 def log_to_csv(result):

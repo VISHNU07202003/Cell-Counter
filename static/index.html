@@ -29,6 +29,12 @@
     </div>
     
     <div class="header-info">
+      <!-- Phase 6: Engine Toggle -->
+      <div class="engine-toggle" id="engineToggle">
+        <span class="engine-label">Engine:</span>
+        <button class="engine-btn active" data-engine="opencv" id="btnOpenCV">⚙️ OpenCV</button>
+        <button class="engine-btn" data-engine="cellpose" id="btnCellpose">🧠 Cellpose</button>
+      </div>
       <div class="header-brand">
         <span class="brand-icon">🫐</span>
         <span class="brand-text">BlueberryLab <strong>UF</strong></span>
@@ -119,7 +125,23 @@
         <div class="download-row">
           <button class="btn-download" id="downloadCsvBtn">📥 Download CSV</button>
           <button class="btn-download" id="downloadZipBtn">📥 Download All Images</button>
+          <button class="btn-insights" id="insightsBtn">🧠 AI Insights</button>
           <button class="btn-clear" id="clearBtn">🗑️ Clear / New Batch</button>
+        </div>
+      </section>
+
+      <!-- --------------------------------------------------------
+           Section C2: AI Insights Panel (hidden by default)
+           -------------------------------------------------------- -->
+      <section class="insights-section section-hidden" id="insightsSection">
+        <div class="insights-card">
+          <div class="insights-header">
+            <h3>🧠 AI Batch Insights</h3>
+            <button class="btn-close" id="insightsClose">✕</button>
+          </div>
+          <div class="insights-body" id="insightsBody">
+            <p class="insights-loading" id="insightsLoading">Analyzing batch data...</p>
+          </div>
         </div>
       </section>
 
@@ -142,12 +164,24 @@
           <div class="viewer-grid" id="viewerGrid">
             <div class="viewer-panel">
               <h4>Original</h4>
-              <img class="viewer-img" id="viewerOriginal" alt="Original image">
+              <div class="canvas-wrapper" id="canvasWrapper">
+                <img class="viewer-img" id="viewerOriginal" alt="Original image">
+                <canvas id="annotationCanvas" class="annotation-canvas"></canvas>
+              </div>
             </div>
             <div class="viewer-panel">
               <h4 id="viewerRightLabel">Annotated</h4>
               <img class="viewer-img" id="viewerProcessed" alt="Processed image">
             </div>
+          </div>
+
+          <!-- Phase 7: Active Learning Toolbar -->
+          <div class="annotation-toolbar" id="annotationToolbar">
+            <span class="toolbar-label">Active Learning:</span>
+            <button class="tool-btn" id="toolAdd" title="Click on the image to add a missed cell">➕ Add Cell</button>
+            <button class="tool-btn" id="toolRemove" title="Click near a cell to remove it">➖ Remove Cell</button>
+            <button class="tool-btn tool-save" id="toolSave" title="Save corrections to training data">💾 Save Corrections</button>
+            <span class="correction-count" id="correctionCount"></span>
           </div>
         </div>
       </section>
